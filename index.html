@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<style>
+
+body {
+  margin: 0;
+  background-color:#fffff2
+}
+
+path {
+  fill: none;
+  stroke: #000;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.major_road {stroke: rgba(0,0,0,.7);stroke-width: .5px;  }
+.minor_road {stroke: rgba(0,0,0,.7);stroke-width: .5px; }
+.highway { stroke: rgba(0,0,0,.7); stroke-width: .5px; }
+.rail { stroke: #000; }
+
+</style>
+<body>
+<script src="//d3js.org/d3.v3.min.js"></script>
+<script src="d3.geo.tile.min.js"></script>
+<script>
+
+var width = Math.max(960, window.innerWidth),
+    height = Math.max(500, window.innerHeight);
+
+var tiler = d3.geo.tile()
+    .size([width, height]);
+
+var projection = d3.geo.mercator()
+    .center([-71.06,42.346])
+    .scale((1 << 21) / 2 / Math.PI)
+    .translate([width / 2, height / 2]);
+
+var path = d3.geo.path()
+    .projection(projection);
+
+var svg = d3.select("body").append("svg")
+    .attr("width", width)
+    .attr("height", height);
+   
+      
+
+drawTiles(tiler,"clip")
+drawMask(svg)
+
+function drawMask(svg){
+    
+    var interval = 20
+    var width = window.innerWidth
+    var height = window.innerHeight
+    var circles = []
+    var diagonal = Math.sqrt(width*width+height*height)
+    var opacityDistanceScale = d3.scale.linear().domain([0,diagonal]).range([0,1])
+    for(var col =0; col<(width/interval)+1;col++){
+        for(var row =0; row<(height/interval)+1;row++){
+            var t = Math.random()
+            circles.push([col,row,t])
+        }
+    }
+    svg.selectAll("circle")
+    .data(circles)
+    .enter()
+    .append("circle")
+    .attr("cx",function(d){return d[0]*interval})
+    .attr("cy",function(d){return d[1]*interval})
+    .attr("r",interval*2)
+    .attr("opacity",function(d){return .2; return d[2]/3})
+    .attr("fill","#fffff2")
+    .on("mouseover",function(d){
+        var originalO = d3.select(this).attr("opacity")
+     //   console.log(originalO)
+        if(d3.event.shiftKey){
+            var newO = parseFloat(originalO)+.2
+             if(newO>.2){newO=.2}
+            d3.select(this).attr("opacity",newO)
+        }else{
+            var newO = parseFloat(originalO)-.2
+            if(newO<0){newO=0}
+            d3.select(this).transition().duration(300).attr("opacity",newO)    
+        }
+        
+    })
+    
+}
+
+function drawTiles(tiler, clipping){    
+      svg.selectAll("g")
+          .data(tiler
+            .scale(projection.scale() * 2 * Math.PI)
+            .translate(projection([0, 0])))
+          .enter().append("g")
+          .each(function(d) {
+        
+              var g = d3.select(this);
+          
+              d3.json("http://" + ["a", "b", "c"][(d[0] * 31 + d[1]) % 3] + ".tile.openstreetmap.us/vectiles-highroad/" + d[2] + "/" + d[0] + "/" + d[1] + ".json", function(error, json) {
+                    g.selectAll("path")
+                    .data(json.features.sort(function(a, b) { return a.properties.sort_key - b.properties.sort_key; }))
+                    .enter().append("path")
+                    .attr("class", function(d) { return d.properties.kind; })
+                    .attr("d", path)
+                  
+            });
+          });
+        }
+
+
+</script>
